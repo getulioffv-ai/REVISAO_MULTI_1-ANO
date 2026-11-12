@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>O Museu Trancado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: um museu escuro com quatro galerias; cada galeria pinta a parede com sua cor e mostra um único "placar de museu" (o desafio) no centro. Senha em 12 casas fixas no topo. */
+:root{
+  --lobby:#15191f;
+  --g1:#5a1f2b; --g2:#1c4a3a; --g3:#6a4716; --g4:#283063;
+  --wall:var(--lobby);
+  --ink:#eeede8; --muted:#b4b8c0; --line:rgba(238,237,232,.18);
+  --placard:#f4f3ee; --placard-ink:#1d1f24; --placard-muted:#5c6068; --placard-line:#d9d7cf;
+  --brass:#d1ad55; --brass-ink:#1d1a10;
+  --ok:#2e7d50; --ok-bg:#e3f1e8; --bad:#b03d33; --bad-bg:#f7e4e1; --sel:#2c5fa8; --sel-bg:#e2ebf8;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:1.125rem;line-height:1.5;transition:background-color .6s ease}
+button,input{font:inherit}
+.wrap{max-width:900px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+h1,h2,h3{font-family:var(--display);font-stretch:118%;line-height:1.05;margin:0;text-wrap:balance}
+.eyebrow{font-family:var(--display);font-stretch:100%;font-weight:700;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* barra superior */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--display);font-stretch:125%;font-weight:900;font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase}
+.meters{display:flex;gap:18px;flex-wrap:wrap;font-variant-numeric:tabular-nums;color:var(--muted);font-size:1rem}
+.meters b{color:var(--ink);font-weight:700}
+
+/* senha */
+.code{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;margin:18px 0 6px}
+.tile{aspect-ratio:3/4;max-width:100%;border:1.5px dashed var(--line);border-radius:6px;display:grid;place-items:center;font-family:var(--display);font-stretch:110%;font-weight:900;font-size:clamp(1rem,3.6vw,2rem);color:transparent}
+.tile.on{border:1.5px solid var(--brass);background:var(--brass);color:var(--brass-ink)}
+.tile.new{animation:flip .6s ease}
+@keyframes flip{0%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
+.codecap{font-size:.85rem;color:var(--muted);margin:0 0 22px}
+
+/* entrada */
+.hero{padding:26px 0 8px}
+.hero h1{font-size:clamp(2.4rem,8vw,4.6rem);font-weight:900;letter-spacing:-.01em}
+.hero p{max-width:62ch;color:var(--muted);font-size:1.2rem;margin:14px 0 0}
+.doors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:26px 0}
+.door{border-radius:10px 10px 4px 4px;padding:16px 14px 18px;min-height:150px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;border:1px solid var(--line)}
+.door .n{font-family:var(--display);font-weight:900;font-size:2.2rem;line-height:1;opacity:.55}
+.door h3{font-size:1.05rem;font-stretch:105%}
+.door span{font-size:.9rem;color:var(--muted)}
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 26px}
+.how div{border-top:2px solid var(--brass);padding-top:10px;font-size:1rem;color:var(--muted)}
+.how b{display:block;color:var(--ink);font-family:var(--display);font-stretch:105%;font-size:1.05rem;margin-bottom:2px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+/* botões */
+.btn{border:0;border-radius:8px;padding:.75em 1.3em;font-weight:700;cursor:pointer;background:var(--brass);color:var(--brass-ink);transition:transform .08s ease,filter .15s}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.dark{background:var(--placard-ink);color:var(--placard)}
+.btn.line{background:transparent;color:var(--placard-ink);border:1.5px solid var(--placard-line)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+
+/* galeria */
+.gal{padding:4px 0 16px}
+.gal h2{font-size:clamp(1.9rem,5.5vw,3rem);font-weight:900;margin-top:4px}
+.steps{display:flex;gap:6px;margin-top:12px}
+.steps i{display:block;height:6px;flex:1;max-width:70px;border-radius:3px;background:var(--line)}
+.steps i.done{background:var(--brass)}
+.steps i.cur{background:var(--ink)}
+
+/* placar do museu */
+.placard{background:var(--placard);color:var(--placard-ink);border-radius:6px;padding:clamp(18px,3.5vw,32px);box-shadow:0 18px 40px rgba(0,0,0,.35);position:relative}
+.placard .kind{font-family:var(--display);font-stretch:100%;font-weight:800;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--placard-muted)}
+.placard .prompt{font-size:clamp(1.15rem,2.4vw,1.4rem);font-weight:700;line-height:1.4;margin:8px 0 18px;max-width:62ch}
+.placard.shake{animation:shake .4s ease}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.sub{font-size:.85rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--placard-muted);margin:14px 0 8px}
+.opts{display:grid;gap:10px}
+.opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--placard-line);border-radius:8px;padding:.8em 1em;color:var(--placard-ink);cursor:pointer;line-height:1.35}
+.opt:hover{border-color:var(--placard-ink)}
+.opt .tag{flex:none;min-width:2em;height:2em;border-radius:6px;display:grid;place-items:center;font-family:var(--display);font-weight:900;background:var(--placard-line);color:var(--placard-ink);font-size:.95rem}
+.opt.sel{border-color:var(--sel);background:var(--sel-bg)}
+.opt.sel .tag{background:var(--sel);color:#fff}
+.opt.ok{border-color:var(--ok);background:var(--ok-bg)}
+.opt.bad{border-color:var(--bad);background:var(--bad-bg)}
+.opt.used{opacity:.4}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;background:#fff;border:1.5px solid var(--placard-line);border-radius:8px;padding:.7em .9em}
+.row.bad{border-color:var(--bad);background:var(--bad-bg)}
+.seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.seg button{border:1.5px solid var(--placard-line);background:var(--placard);color:var(--placard-ink);border-radius:6px;padding:.4em .8em;font-weight:700;cursor:pointer;font-size:.95rem}
+.seg button[aria-pressed="true"]{background:var(--placard-ink);color:var(--placard);border-color:var(--placard-ink)}
+.seq{display:grid;gap:8px;margin-bottom:6px;min-height:20px}
+.seq .opt{background:var(--sel-bg);border-color:var(--sel)}
+.field{display:flex;gap:10px;flex-wrap:wrap}
+.field input{flex:1 1 220px;min-width:0;border:1.5px solid var(--placard-line);border-radius:8px;padding:.7em .9em;background:#fff;color:var(--placard-ink);font-size:1.15rem}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--placard-line)}
+.bar .left{display:flex;gap:10px;flex-wrap:wrap}
+.msg{margin-top:14px;font-weight:700;min-height:1.5em}
+.msg.bad{color:var(--bad)}
+.hint{margin-top:14px;background:#fbf6e6;border:1px solid #e7d9a8;border-radius:8px;padding:.7em 1em;font-size:1.05rem}
+.hint b{font-family:var(--display);letter-spacing:.06em;text-transform:uppercase;font-size:.8rem;display:block;color:#7a5d12}
+
+/* letra conquistada */
+.won{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+.big{width:clamp(88px,16vw,130px);aspect-ratio:3/4;border-radius:8px;background:var(--brass);color:var(--brass-ink);display:grid;place-items:center;font-family:var(--display);font-stretch:110%;font-weight:900;font-size:clamp(3rem,9vw,5rem);animation:flip .7s ease}
+.won p{margin:6px 0 0;max-width:60ch}
+
+/* final */
+.lock{text-align:center;padding:10px 0}
+.lock .prompt{margin-left:auto;margin-right:auto}
+.lock .field{justify-content:center}
+.lock .field input{text-align:center;letter-spacing:.2em;text-transform:uppercase;font-family:var(--display);font-weight:800;max-width:420px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}
+.stats div{background:#fff;border:1.5px solid var(--placard-line);border-radius:8px;padding:14px;text-align:center}
+.stats b{display:block;font-family:var(--display);font-weight:900;font-size:2rem;font-variant-numeric:tabular-nums}
+.stats span{font-size:.9rem;color:var(--placard-muted)}
+.foot{margin-top:26px;font-size:.85rem;color:var(--muted)}
+
+@media (max-width:640px){
+  .doors{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .how{grid-template-columns:1fr}
+  .code{gap:4px}
+  .won{grid-template-columns:1fr;justify-items:start}
+  .row{grid-template-columns:1fr}
+  .seg{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">O Museu Trancado</div>
+    <div class="meters" id="meters" hidden>
+      <span>Tempo <b id="m-time">00:00</b></span>
+      <span>Dicas <b id="m-hints">0</b></span>
+      <span>Erros <b id="m-err">0</b></span>
+    </div>
+  </header>
+  <div id="codewrap" hidden>
+    <div class="code" id="code" aria-label="Senha da porta principal"></div>
+    <p class="codecap">Senha da porta principal: cada desafio resolvido revela uma letra.</p>
+  </div>
+  <main id="app"></main>
+  <p class="foot">Revisão de Sociologia · 1ª série do Ensino Médio · 3º trimestre · Capítulos 10, 11, 12 e 13</p>
+</div>
+
+<script>
+const PASS = "PARTICIPAÇÃO";
+const GALLERIES = [
+  { name:"Galeria do Poder", cap:"Cap. 10 · A formação do Estado", color:"--g1", challenges:[
+    { type:"pairs", kind:"Ligue os pares", prompt:"Ligue cada pensador à ideia que ele defendia sobre o Estado.",
+      leftTitle:"Pensadores", rightTitle:"Ideias",
+      pairs:[
+        ["Nicolau Maquiavel","O Estado deve ser entendido como ele é, e não como deveria ser."],
+        ["Jean Bodin","A soberania não tem limites e se concentra no monarca."],
+        ["John Locke","O Estado existe para proteger a propriedade, com um parlamento eleito."],
+        ["G. W. F. Hegel","O Estado é o alicerce sobre o qual se constrói a sociedade civil."]
+      ],
+      hint:"Locke é o teórico da Revolução Gloriosa. Bodin foi um jurista francês do século XVI.",
+      why:"Maquiavel olha o poder como ele é; Bodin defende a soberania absoluta do rei; Locke liga o Estado à propriedade e ao parlamento; Hegel vê o Estado como fundamento da sociedade civil." },
+    { type:"order", kind:"Linha do tempo", prompt:"Coloque os acontecimentos em ordem, do mais antigo ao mais recente. Toque nos cartões na ordem certa.",
+      items:[
+        "Revolução de Avis funda o primeiro Estado nacional absolutista, em Portugal",
+        "Revolução Gloriosa dá supremacia ao Parlamento na Inglaterra",
+        "Revolução Russa dá origem ao Estado soviético",
+        "Keynes publica a Teoria geral do emprego, do juro e da moeda",
+        "Thatcher e Reagan cortam políticas de bem-estar social"
+      ],
+      hint:"Pense em séculos: um acontecimento do século XIV, um do século XVII e três do século XX.",
+      why:"Avis (fim do século XIV) → Revolução Gloriosa (1688) → Revolução Russa (1917) → Keynes (1936) → Thatcher e Reagan (1979–1990)." },
+    { type:"mc", kind:"Escolha", prompt:"O bispo francês Jacques Bossuet afirmava que os reis eram representantes de Deus na Terra e que sua autoridade era sagrada. Essa ideia sustentava qual modelo de Estado?",
+      options:["Estado absolutista","Estado liberal","Estado fascista","Estado neoliberal"], answer:0,
+      hint:"Lembre-se de Luís XIV e da frase “O Estado sou eu”.",
+      why:"No Estado absolutista, o poder se concentrava no soberano. Bossuet dava a ele uma origem divina, limitada apenas pelos mandamentos cristãos." }
+  ]},
+  { name:"Galeria da Cidadania", cap:"Cap. 11 · Democracia e movimentos sociais", color:"--g2", challenges:[
+    { type:"vf", kind:"Verdadeiro ou falso", prompt:"Marque V ou F em cada frase. A letra só aparece se as três estiverem certas.",
+      items:[
+        ["Sufrágio é o termo que indica quem pode votar, isto é, as condições para alguém ser eleitor.", true],
+        ["Para Max Weber, um partido pode ter uma finalidade objetiva, uma finalidade pessoal ou as duas ao mesmo tempo.", true],
+        ["A expressão “Direitos Humanos” é usada tecnicamente no Direito de cada país; no Direito Internacional, fala-se em “direitos e garantias fundamentais”.", false]
+      ],
+      hint:"Uma das frases troca o que vale para o Direito Internacional pelo que vale para o Direito de cada país.",
+      why:"As duas primeiras estão certas. A terceira inverte a regra: “Direitos Humanos” é o termo do Direito Internacional, e “direitos e garantias fundamentais” é o termo usado dentro de cada país." },
+    { type:"mc", kind:"Escolha", prompt:"A prefeitura quer transformar a praça central em estacionamento. Antes de tomar a decisão, chama a população para votar se a obra deve ou não acontecer. Que instrumento de participação direta é esse?",
+      options:["Referendo","Plebiscito","Representação indireta","Sufrágio universal"], answer:1,
+      hint:"Repare no momento da consulta: ela acontece antes ou depois da decisão do governo?",
+      why:"O plebiscito é uma consulta prévia. O referendo é uma consulta posterior, para aprovar algo que o governo já decidiu." },
+    { type:"word", kind:"Complete", prompt:"Segundo Émile Durkheim, o sentimento que faz as pessoas se perceberem como parte de um mesmo grupo e que dá coesão aos movimentos sociais, nascido da consciência coletiva, chama-se ________.",
+      accept:["solidariedade"], placeholder:"Digite a palavra",
+      hint:"A palavra começa com S e dá nome a um dos temas de Da divisão do trabalho social.",
+      why:"Para Durkheim, a solidariedade, construída a partir da consciência coletiva, é o que dá coesão aos grupos, inclusive aos movimentos sociais." }
+  ]},
+  { name:"Galeria das Culturas", cap:"Cap. 12 · Cultura: a unidade na diversidade", color:"--g3", challenges:[
+    { type:"pairs", kind:"Ligue os pares", prompt:"Ligue cada antropólogo à contribuição que ele deixou para o estudo da cultura.",
+      leftTitle:"Antropólogos", rightTitle:"Contribuições",
+      pairs:[
+        ["Bronislaw Malinowski","Observação participante: viver a rotina do grupo, aprender sua língua e seus rituais."],
+        ["Franz Boas","Particularismo histórico: cada cultura tem uma história única."],
+        ["Lewis H. Morgan","Três estágios da cultura: selvageria, barbárie e civilização."],
+        ["Roberto DaMatta","Transformar o exótico em familiar e o familiar em exótico."]
+      ],
+      hint:"Morgan é o evolucionista do grupo. DaMatta é o único brasileiro.",
+      why:"Malinowski criou a observação participante; Boas, o particularismo histórico; Morgan, os estágios evolutivos; DaMatta, a dupla tarefa do estranhamento." },
+    { type:"sort", kind:"Classifique", prompt:"Separe os bens culturais: cada um é cultura material ou cultura imaterial?",
+      cats:["Material","Imaterial"],
+      items:[
+        ["Estátua do Cristo Redentor, no Rio de Janeiro",0],
+        ["Ofício das Baianas de Acarajé",1],
+        ["Uma escultura exposta em um museu",0],
+        ["O idioma falado por um povo",1],
+        ["As festas juninas",1]
+      ],
+      hint:"Material é o que se pode tocar. Imaterial são saberes, línguas, festas e modos de fazer.",
+      why:"O Cristo Redentor e a escultura são bens físicos, palpáveis. O ofício das baianas, o idioma e as festas são saberes e práticas, portanto imateriais." },
+    { type:"mc", kind:"Escolha", prompt:"Em um trabalho de campo numa comunidade quilombola, Lia percebe que o modo de vida dali é muito diferente do seu. Durante todo o trabalho, ela mantém uma postura constante de respeito a essa diferença, sem tentar “corrigir” os costumes do lugar. A atitude de Lia corresponde a:",
+      options:["Empatia","Etnocentrismo","Alteridade","Darwinismo social"], answer:2,
+      hint:"A empatia vale para uma situação específica. Procure o conceito que descreve uma postura contínua.",
+      why:"Alteridade é reconhecer, de forma contínua, que o outro é diferente e manter respeito à sua singularidade. A empatia é se colocar no lugar do outro em uma circunstância específica." }
+  ]},
+  { name:"Galeria das Identidades", cap:"Cap. 13 · A construção das identidades", color:"--g4", challenges:[
+    { type:"pairs", kind:"Ligue os pares", prompt:"Ligue cada autor à ideia que ele propôs sobre identidade.",
+      leftTitle:"Autores", rightTitle:"Ideias",
+      pairs:[
+        ["George H. Mead","O self se forma na interação com outras pessoas."],
+        ["Stuart Hall","As identidades estão descentradas, sem um centro estável."],
+        ["Néstor Canclini","As identidades se hibridizam, sobretudo por meio do consumo."],
+        ["Maurice Halbwachs","Cada memória individual é um ponto de vista sobre a memória coletiva."]
+      ],
+      hint:"Canclini estuda a América Latina. Halbwachs é o sociólogo da memória.",
+      why:"Mead explica o self pela interação; Hall fala em identidades descentradas; Canclini, em hibridização pelo consumo; Halbwachs, em memória coletiva." },
+    { type:"sort", kind:"Classifique", prompt:"Manuel Castells distingue três formas de construir identidades. Classifique cada exemplo.",
+      cats:["Legitimadora","De resistência","De projeto"],
+      items:[
+        ["Uma campanha oficial que exalta as instituições dominantes do país",0],
+        ["Um povo indígena que se organiza para defender sua língua e seu território contra pressões externas",1],
+        ["Um movimento ambientalista que quer transformar a relação de toda a sociedade com a natureza",2]
+      ],
+      hint:"Castells cita o feminismo e o ambientalismo como exemplos de movimentos que querem mudar as relações humanas de forma profunda.",
+      why:"A identidade legitimadora vem das instituições dominantes; a de resistência, de grupos em posição subalterna que criam “trincheiras”; a de projeto busca mudar a estrutura da sociedade." },
+    { type:"word", kind:"Complete", prompt:"Na República, Tiradentes passou a ser pintado com barba e cabelos longos, traído e martirizado como Jesus. O historiador José Murilo de Carvalho chama essa imagem de “Cristo ________”.",
+      accept:["civico","cívico"], placeholder:"Digite a palavra",
+      hint:"É um adjetivo ligado à cidadania e à pátria. Começa com C.",
+      why:"Os republicanos fizeram de Tiradentes um “Cristo cívico”, herói criado para dar uma nova face à identidade nacional." }
+  ]}
+];
+
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const app = $("#app");
+const norm = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shuffle = a => { a = a.slice(); for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const KEY = "museu-trancado-v1";
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+const load = () => { try { const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; } catch(e){ return null; } };
+const clearSave = () => { try { localStorage.removeItem(KEY); } catch(e){} };
+const fmt = ms => { const s = Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); };
+
+let S = null;           // estado salvo
+let L = {};             // estado local do desafio
+let tick = null;
+const fresh = () => ({ g:0, c:0, letters:0, hints:0, errors:0, elapsed:0, started:Date.now(), phase:"play", hinted:{} });
+const elapsed = () => S ? S.elapsed + (S.phase==="win" ? 0 : Date.now()-S.started) : 0;
+
+function setWall(i){ document.documentElement.style.setProperty("--wall", i==null ? "var(--lobby)" : `var(${GALLERIES[i].color})`); }
+function renderCode(newIdx){
+  const c = $("#code"); c.innerHTML = "";
+  [...PASS].forEach((ch,i) => {
+    const d = document.createElement("div");
+    d.className = "tile" + (i < S.letters ? " on" : "") + (i===newIdx ? " new" : "");
+    d.textContent = i < S.letters ? ch : "·";
+    d.setAttribute("aria-label", i < S.letters ? `Letra ${i+1}: ${ch}` : `Letra ${i+1}: ainda trancada`);
+    c.appendChild(d);
+  });
+}
+function meters(){ $("#m-time").textContent = fmt(elapsed()); $("#m-hints").textContent = S.hints; $("#m-err").textContent = S.errors; }
+function startTick(){ clearInterval(tick); tick = setInterval(() => { if (S && S.phase!=="win") meters(); }, 1000); }
+function chrome(on){ $("#meters").hidden = !on; $("#codewrap").hidden = !on; }
+
+/* ---------- entrada ---------- */
+function lobby(){
+  setWall(null); chrome(false); clearInterval(tick);
+  const saved = load();
+  const can = saved && saved.phase !== "win";
+  app.innerHTML = `
+  <section class="hero">
+    <div class="eyebrow">Escape room de Sociologia · 1ª série</div>
+    <h1>O Museu Trancado</h1>
+    <p>O Museu da Sociologia fechou as portas com vocês lá dentro. Para sair, a equipe precisa atravessar quatro galerias. Cada desafio resolvido revela uma letra da senha da porta principal.</p>
+  </section>
+  <div class="doors">
+    ${GALLERIES.map((g,i)=>`<div class="door" style="background:var(${g.color})"><div class="n">${i+1}</div><h3>${g.name}</h3><span>${g.cap}</span></div>`).join("")}
+  </div>
+  <div class="how">
+    <div><b>12 desafios</b>Três por galeria, em formatos diferentes: pares, linha do tempo, classificação, verdadeiro ou falso e palavras.</div>
+    <div><b>Dicas custam</b>Cada dica pedida e cada erro entram no placar final. Vence a equipe que sair mais rápido e com menos dicas.</div>
+    <div><b>Senha final</b>As 12 letras formam a palavra que abre a porta. Digitem a senha para escapar.</div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="b-new">${can ? "Começar do zero" : "Entrar no museu"}</button>
+    ${can ? `<button class="btn ghost" id="b-cont">Continuar de onde parou</button>` : ""}
+  </div>`;
+  $("#b-new").onclick = () => { S = fresh(); save(); play(); };
+  if (can) $("#b-cont").onclick = () => { S = saved; S.started = Date.now(); save(); S.phase==="lock" ? finalLock() : play(); };
+}
+
+/* ---------- galeria e desafio ---------- */
+function play(){
+  chrome(true); startTick(); meters(); renderCode();
+  const g = GALLERIES[S.g], ch = g.challenges[S.c];
+  setWall(S.g);
+  L = { ch };
+  app.innerHTML = `
+  <section class="gal">
+    <div class="eyebrow">Galeria ${S.g+1} de 4 · ${g.cap}</div>
+    <h2>${g.name}</h2>
+    <div class="steps" aria-label="Desafio ${S.c+1} de 3">${g.challenges.map((_,i)=>`<i class="${i<S.c?"done":i===S.c?"cur":""}"></i>`).join("")}</div>
+  </section>
+  <article class="placard" id="pl">
+    <div class="kind">Desafio ${S.c+1} de 3 · ${ch.kind}</div>
+    <div class="prompt">${esc(ch.prompt)}</div>
+    <div id="body"></div>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
+    <div id="hintbox"></div>
+    <div class="bar">
+      <div class="left"><button class="btn line" id="b-hint">Pedir dica</button></div>
+      <button class="btn dark" id="b-check" ${ch.type==="mc"?"hidden":""}>Conferir</button>
+    </div>
+  </article>`;
+  const hk = S.g+"-"+S.c;
+  if (S.hinted[hk]) showHint();
+  $("#b-hint").onclick = () => { if (!S.hinted[hk]) { S.hinted[hk]=true; S.hints++; save(); meters(); } showHint(); };
+  ({pairs:mkPairs, order:mkOrder, mc:mkMC, vf:mkVF, sort:mkSort, word:mkWord})[ch.type]();
+  $("#b-check").onclick = () => check();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function showHint(){ $("#hintbox").innerHTML = `<div class="hint"><b>Dica</b>${esc(L.ch.hint)}</div>`; $("#b-hint").disabled = true; }
+function wrong(text){
+  S.errors++; save(); meters();
+  const m = $("#msg"); m.className = "msg bad"; m.textContent = text || "Ainda não. Revejam e tentem de novo.";
+  const pl = $("#pl"); pl.classList.remove("shake"); void pl.offsetWidth; pl.classList.add("shake");
+}
+function clearMsg(){ const m=$("#msg"); m.className="msg"; m.textContent=""; }
+
+/* múltipla escolha */
+function mkMC(){
+  const ch = L.ch, L2 = "ABCD";
+  $("#body").innerHTML = `<div class="opts">${ch.options.map((o,i)=>`<button class="opt" data-i="${i}"><span class="tag">${L2[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
+  $("#body").querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const i = +b.dataset.i;
+    if (b.classList.contains("bad")) return;
+    if (i === ch.answer){ b.classList.add("ok"); setTimeout(success, 450); }
+    else { b.classList.add("bad"); wrong(); }
+  });
+}
+/* pares */
+function mkPairs(){
+  const ch = L.ch;
+  L.right = shuffle(ch.pairs.map((p,i)=>({t:p[1],i})));
+  L.link = {}; L.sel = null;
+  drawPairs();
+}
+function drawPairs(){
+  const ch = L.ch, nums = "1234";
+  const rightOf = {}; Object.entries(L.link).forEach(([l,r]) => rightOf[r] = +l);
+  $("#body").innerHTML = `
+    <div class="sub">${esc(ch.leftTitle)} · toque em um</div>
+    <div class="opts">${ch.pairs.map((p,i)=>`<button class="opt ${L.sel===i?"sel":""}" data-l="${i}"><span class="tag">${nums[i]}</span><span>${esc(p[0])}</span></button>`).join("")}</div>
+    <div class="sub">${esc(ch.rightTitle)} · depois toque na ideia correspondente</div>
+    <div class="opts">${L.right.map((r,k)=>{ const l = rightOf[k]; return `<button class="opt ${l!=null?"sel":""}" data-r="${k}"><span class="tag">${l!=null?nums[l]:"?"}</span><span>${esc(r.t)}</span></button>`; }).join("")}</div>`;
+  $("#body").querySelectorAll("[data-l]").forEach(b => b.onclick = () => { clearMsg(); const i=+b.dataset.l; L.sel = L.sel===i ? null : i; drawPairs(); });
+  $("#body").querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
+    clearMsg(); const k=+b.dataset.r;
+    const owner = Object.keys(L.link).find(l => L.link[l]===k);
+    if (L.sel==null){ if (owner!=null){ delete L.link[owner]; drawPairs(); } return; }
+    if (owner!=null) delete L.link[owner];
+    L.link[L.sel] = k; L.sel = null; drawPairs();
+  });
+}
+/* ordem */
+function mkOrder(){ L.pool = shuffle(L.ch.items.map((t,i)=>({t,i}))); L.seq = []; drawOrder(); }
+function drawOrder(){
+  $("#body").innerHTML = `
+    <div class="sub">Sua linha do tempo</div>
+    <div class="seq">${L.seq.length ? L.seq.map((x,k)=>`<button class="opt" data-s="${k}"><span class="tag">${k+1}</span><span>${esc(x.t)}</span></button>`).join("") : `<span style="color:var(--placard-muted);font-size:1rem">Toque nos cartões abaixo na ordem certa. Toque aqui em um cartão para devolvê-lo.</span>`}</div>
+    <div class="sub">Cartões</div>
+    <div class="opts">${L.pool.map((x,k)=>`<button class="opt" data-p="${k}"><span class="tag">+</span><span>${esc(x.t)}</span></button>`).join("")}</div>`;
+  $("#body").querySelectorAll("[data-p]").forEach(b => b.onclick = () => { clearMsg(); L.seq.push(L.pool.splice(+b.dataset.p,1)[0]); drawOrder(); });
+  $("#body").querySelectorAll("[data-s]").forEach(b => b.onclick = () => { clearMsg(); L.pool.push(L.seq.splice(+b.dataset.s,1)[0]); drawOrder(); });
+}
+/* verdadeiro ou falso */
+function mkVF(){ L.ans = L.ch.items.map(()=>null); drawVF(); }
+function drawVF(bad){
+  $("#body").innerHTML = `<div class="opts">${L.ch.items.map((it,i)=>`
+    <div class="row ${bad&&bad.includes(i)?"bad":""}"><span>${esc(it[0])}</span>
+      <span class="seg"><button data-i="${i}" data-v="1" aria-pressed="${L.ans[i]===true}">V</button><button data-i="${i}" data-v="0" aria-pressed="${L.ans[i]===false}">F</button></span></div>`).join("")}</div>`;
+  $("#body").querySelectorAll(".seg button").forEach(b => b.onclick = () => { clearMsg(); L.ans[+b.dataset.i] = b.dataset.v==="1"; drawVF(); });
+}
+/* classificação */
+function mkSort(){ L.order = shuffle(L.ch.items.map((x,i)=>i)); L.ans = {}; drawSort(); }
+function drawSort(bad){
+  const ch = L.ch;
+  $("#body").innerHTML = `<div class="opts">${L.order.map(i=>`
+    <div class="row ${bad&&bad.includes(i)?"bad":""}"><span>${esc(ch.items[i][0])}</span>
+      <span class="seg">${ch.cats.map((c,k)=>`<button data-i="${i}" data-k="${k}" aria-pressed="${L.ans[i]===k}">${esc(c)}</button>`).join("")}</span></div>`).join("")}</div>`;
+  $("#body").querySelectorAll(".seg button").forEach(b => b.onclick = () => { clearMsg(); L.ans[+b.dataset.i] = +b.dataset.k; drawSort(); });
+}
+/* palavra */
+function mkWord(){
+  $("#body").innerHTML = `<div class="field"><label class="sub" for="w-in" style="flex-basis:100%;margin:0">Resposta</label><input id="w-in" autocomplete="off" placeholder="${esc(L.ch.placeholder)}"></div>`;
+  const inp = $("#w-in"); inp.focus({preventScroll:true});
+  inp.addEventListener("keydown", e => { if (e.key==="Enter") check(); });
+  inp.addEventListener("input", clearMsg);
+}
+
+function check(){
+  const ch = L.ch;
+  if (ch.type==="pairs"){
+    if (Object.keys(L.link).length < ch.pairs.length) return wrongSoft("Liguem todos os pares antes de conferir.");
+    const badL = Object.keys(L.link).filter(l => L.right[L.link[l]].i !== +l);
+    if (!badL.length) return success();
+    badL.forEach(l => delete L.link[l]); drawPairs();
+    return wrong(`${ch.pairs.length - badL.length} de ${ch.pairs.length} pares certos. Os errados foram desfeitos.`);
+  }
+  if (ch.type==="order"){
+    if (L.pool.length) return wrongSoft("Coloquem todos os cartões na linha do tempo.");
+    const right = L.seq.filter((x,k)=>x.i===k).length;
+    if (right === ch.items.length) return success();
+    L.pool = shuffle(L.seq); L.seq = []; drawOrder();
+    return wrong(`${right} de ${ch.items.length} cartões estavam na posição certa. Montem de novo.`);
+  }
+  if (ch.type==="vf"){
+    if (L.ans.some(a=>a===null)) return wrongSoft("Marquem V ou F em todas as frases.");
+    const bad = ch.items.map((it,i)=>L.ans[i]!==it[1]?i:-1).filter(i=>i>=0);
+    if (!bad.length) return success();
+    drawVF(bad); return wrong(`${bad.length === 1 ? "Uma frase está errada" : bad.length+" frases estão erradas"}. Revejam as marcadas.`);
+  }
+  if (ch.type==="sort"){
+    if (Object.keys(L.ans).length < ch.items.length) return wrongSoft("Classifiquem todos os itens antes de conferir.");
+    const bad = ch.items.map((it,i)=>L.ans[i]!==it[1]?i:-1).filter(i=>i>=0);
+    if (!bad.length) return success();
+    drawSort(bad); return wrong(`${bad.length === 1 ? "Um item está" : bad.length+" itens estão"} na categoria errada.`);
+  }
+  if (ch.type==="word"){
+    const v = norm($("#w-in").value);
+    if (!v) return wrongSoft("Digitem uma resposta.");
+    if (ch.accept.map(norm).includes(v)) return success();
+    return wrong("Essa não é a palavra. Tentem de novo ou peçam a dica.");
+  }
+}
+function wrongSoft(t){ const m=$("#msg"); m.className="msg bad"; m.textContent=t; }
+
+function success(){
+  const ch = L.ch, idx = S.letters, letter = PASS[idx];
+  S.letters++;
+  const lastInGallery = S.c === 2, lastOverall = S.letters === PASS.length;
+  if (lastOverall) S.phase = "lock";
+  else if (lastInGallery){ S.g++; S.c = 0; } else S.c++;
+  save(); renderCode(idx); meters();
+  const g = GALLERIES[lastInGallery && !lastOverall ? S.g-1 : (lastOverall ? 3 : S.g)];
+  $("#pl").innerHTML = `
+    <div class="kind">Letra conquistada · ${idx+1} de 12</div>
+    <div class="won" style="margin-top:12px">
+      <div class="big">${letter}</div>
+      <div><h3 style="font-size:1.5rem;color:var(--placard-ink)">Correto!</h3><p>${esc(ch.why)}</p></div>
+    </div>
+    <div class="bar"><span style="color:var(--placard-muted);font-size:1rem">${lastOverall ? "Todas as letras foram reveladas." : lastInGallery ? `Vocês saíram da ${g.name}. A próxima porta está aberta.` : "Próximo desafio nesta galeria."}</span>
+      <button class="btn dark" id="b-next">${lastOverall ? "Ir para a porta principal" : lastInGallery ? "Entrar na próxima galeria" : "Próximo desafio"}</button></div>`;
+  $("#b-next").onclick = () => lastOverall ? finalLock() : play();
+  $("#b-next").focus({preventScroll:true});
+}
+
+/* ---------- porta final ---------- */
+function finalLock(){
+  chrome(true); startTick(); meters(); renderCode(); setWall(null);
+  app.innerHTML = `
+  <section class="gal"><div class="eyebrow">Saída</div><h2>A porta principal</h2></section>
+  <article class="placard lock" id="pl">
+    <div class="kind">Senha de 12 letras</div>
+    <div class="prompt">Juntem as letras conquistadas, na ordem, e digitem a palavra que abre a porta.</div>
+    <div class="field"><input id="w-in" autocomplete="off" aria-label="Senha" placeholder="Senha"><button class="btn dark" id="b-check">Abrir a porta</button></div>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
+  </article>`;
+  const go = () => { norm($("#w-in").value)===norm(PASS) ? win() : wrong("A porta não abriu. Confiram as letras na ordem."); };
+  $("#b-check").onclick = go; $("#w-in").addEventListener("keydown", e => { if (e.key==="Enter") go(); });
+}
+function win(){
+  S.elapsed = elapsed(); S.phase = "win"; save(); clearInterval(tick); meters();
+  app.innerHTML = `
+  <section class="gal"><div class="eyebrow">Vocês escaparam</div><h2>A porta se abriu</h2></section>
+  <article class="placard">
+    <div class="kind">Senha: ${PASS}</div>
+    <div class="prompt">Participação liga as quatro galerias: o poder do Estado, a cidadania democrática, a convivência entre culturas e a construção das identidades.</div>
+    <div class="stats">
+      <div><b>${fmt(S.elapsed)}</b><span>tempo total</span></div>
+      <div><b>${S.hints}</b><span>dicas usadas</span></div>
+      <div><b>${S.errors}</b><span>erros</span></div>
+    </div>
+    <div class="bar"><span style="color:var(--placard-muted);font-size:1rem">Mostrem esta tela ao professor para registrar o resultado da equipe.</span><button class="btn dark" id="b-again">Voltar à entrada</button></div>
+  </article>`;
+  $("#b-again").onclick = () => { clearSave(); S = null; lobby(); };
+}
+
+lobby();
+</script>
+
+</body>
+</html>
